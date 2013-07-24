@@ -14,7 +14,7 @@
  * limitations under the License.
  *
  */
-package securesocial.controllers
+package securesocial.controllers.registration
 
 import _root_.java.util.UUID
 import play.api.mvc.{Result, Action, Controller}
@@ -32,13 +32,15 @@ import play.api.i18n.Messages
 import securesocial.core.providers.Token
 import scala.Some
 import securesocial.core.UserId
+import securesocial.controllers.TemplatesPlugin
+import securesocial.controllers.ProviderController
 
 
 /**
  * A controller to handle user registration.
  *
  */
-object Registration extends Controller {
+object DefaultRegistration extends Controller {
 
   val providerId = UsernamePasswordProvider.UsernamePassword
   val UserNameAlreadyTaken = "securesocial.signup.userNameAlreadyTaken"

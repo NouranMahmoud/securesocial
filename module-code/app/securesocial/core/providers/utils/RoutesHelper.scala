@@ -71,7 +71,15 @@ object RoutesHelper {
   def startResetPassword() = registrationMethods.startResetPassword()
   def signUp(token:String) = registrationMethods.signUp(token)
   def handleResetPassword(token:String) = registrationMethods.handleResetPassword(token)
-
+  
+  ///
+  lazy val frr = Play.application().classloader().loadClass("securesocial.controllers.ReverseFullRegistration")
+  lazy val fullRegistrationMethods = frr.newInstance().asInstanceOf[{
+    def handleSignUp(): Call
+    def signUp(): Call
+  }]
+  def handleFullSignUp() = fullRegistrationMethods.handleSignUp()
+  def fullSignUp() = fullRegistrationMethods.signUp()
   ////
   lazy val passChange = Play.application().classloader().loadClass("securesocial.controllers.ReversePasswordChange")
   lazy val passwordChangeMethods = passChange.newInstance().asInstanceOf[{

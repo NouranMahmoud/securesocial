@@ -23,6 +23,7 @@ import securesocial.core.{Identity, SecuredRequest, SocialUser}
 import play.api.data.Form
 import securesocial.controllers.Registration.RegistrationInfo
 import securesocial.controllers.PasswordChange.ChangeInfo
+import securesocial.controllers.registration.FullRegistration.FullRegistrationInfo 
 
 
 /**
@@ -54,6 +55,15 @@ trait TemplatesPlugin extends Plugin {
    * @return
    */
   def getSignUpPage[A](implicit request: Request[A], form: Form[RegistrationInfo], token: String): Html
+  
+  /**
+   * Returns the html for the full signup page
+   *
+   * @param request
+   * @tparam A
+   * @return
+   */
+  def getFullSignUpPage[A](implicit request: Request[A], form: Form[FullRegistrationInfo]): Html = ???
 
   /**
    * Returns the html for the start signup page
@@ -173,6 +183,10 @@ class DefaultTemplatesPlugin(application: Application) extends TemplatesPlugin {
 
   override def getSignUpPage[A](implicit request: Request[A], form: Form[RegistrationInfo], token: String): Html = {
     securesocial.views.html.Registration.signUp(form, token)
+  }
+  
+  override def getFullSignUpPage[A](implicit request: Request[A], form: Form[FullRegistrationInfo]): Html = {
+    securesocial.views.html.Registration.fullSignUp(form)
   }
 
   override def getStartSignUpPage[A](implicit request: Request[A], form: Form[String]): Html = {
