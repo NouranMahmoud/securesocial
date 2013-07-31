@@ -80,6 +80,7 @@ trait SecureSocial extends Controller {
       val result = for (
         authenticator <- SecureSocial.authenticatorFromRequest ;
         user <- UserService.find(authenticator.userId)
+        if(user.state == "Active")
       ) yield {
         touch(authenticator)
         if ( authorize.isEmpty || authorize.get.isAuthorized(user)) {

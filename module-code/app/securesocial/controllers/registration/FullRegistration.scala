@@ -1,6 +1,7 @@
 package securesocial.controllers.registration
 
 import play.api.mvc.{ Result, Action, Controller }
+import play.api.mvc.Results._
 import play.api.data._
 import play.api.data.Forms._
 import play.api.data.validation.Constraints._
@@ -17,8 +18,9 @@ import scala.Some
 import securesocial.core.UserId
 import securesocial.controllers.TemplatesPlugin
 import securesocial.controllers.ProviderController
+import securesocial.controllers.ProviderController.landingUrl
 
-object FullRegistration extends Controller {
+object FullRegistration extends Controller with securesocial.core.SecureSocial {
   import DefaultRegistration.{
     RegistrationInfo,
     UserName,
@@ -32,8 +34,17 @@ object FullRegistration extends Controller {
     PasswordsDoNotMatch,
     Email,
     Success,
-    SignUpDone
+    SignUpDone,
+    onHandleStartSignUpGoTo,
+    ThankYouCheckEmail,
+    TokenDurationKey,
+    DefaultDuration,
+    TokenDuration,
+    createToken,
+    executeForToken
   }
+
+  val NotActive = "NotActive"
 
   case class FullRegistrationInfo(userName: Option[String], firstName: String, lastName: String, email: String, password: String)
 
@@ -78,6 +89,7 @@ object FullRegistration extends Controller {
   /**
    * Handles posts from the sign up page
    */
+
   def handleSignUp = Action { implicit request =>
     form.bindFromRequest.fold(
       errors => {
@@ -89,21 +101,56 @@ object FullRegistration extends Controller {
       info => {
         val id = info.email
         val userId = UserId(id, providerId)
-        val user = SocialUser(
-          userId,
-          info.firstName,
-          info.lastName,
-          "%s %s".format(info.firstName, info.lastName),
-          Some(info.email),
-          GravatarHelper.avatarFor(info.email),
-          AuthenticationMethod.UserPassword,
-          passwordInfo = Some(Registry.hashers.currentHasher.hash(info.password)))
-        val saved = UserService.save(user)
-        if (UsernamePasswordProvider.sendWelcomeEmail) {
-          Mailer.sendWelcomeEmail(saved)
+        // check if there is already an account for this email address
+        UserService.findByEmailAndProvider(info.email, UsernamePasswordProvider.UsernamePassword) match {
+          case Some(user) => {
+            // user signed up already, send an email offering to login/recover password
+            Mailer.sendAlreadyRegisteredEmail(user)
+          }
+          case None => {
+            val token = createToken(info.email, isSignUp = true)
+            Mailer.sendVerificationEmail(info.email, token._1)
+
+            val user = SocialUser(
+              userId,
+              info.firstName,
+              info.lastName,
+              "%s %s".format(info.firstName, info.lastName),
+              NotActive,
+              Some(info.email),
+              GravatarHelper.avatarFor(info.email),
+              AuthenticationMethod.UserPassword,
+              passwordInfo = Some(Registry.hashers.currentHasher.hash(info.password)))
+            val saved = UserService.save(user)
+
+          }
         }
-        val eventSession = Events.fire(new SignUpEvent(user)).getOrElse(session)
-        ProviderController.completeAuthentication(user, eventSession).flashing(Success -> Messages(SignUpDone))
+        Redirect(onHandleStartSignUpGoTo).flashing(Success -> Messages(ThankYouCheckEmail), Email -> info.email)
       })
   }
+  //[ ] Create Verification action, it should check the token, if it is correct: set user state = active [@nouranmahmoud]
+  def userVerification(token: String) = UserAwareAction { implicit request =>
+
+    executeForToken(token, true, { t =>
+      val email = t.email
+      val providerId = t.uuid
+      val userFromUrl = UserService.findByEmailAndProvider(email, UsernamePasswordProvider.UsernamePassword)
+      userFromUrl match {
+        case Some(userFromUrl) => request.user match {
+          case Some(user) if (userFromUrl == user) =>
+            val updated = UserService.save(SocialUser(userFromUrl).copy(state = "Active"))
+            Mailer.sendWelcomeEmail(updated)
+            val eventSession = Events.fire(new SignUpEvent(updated)).getOrElse(session)
+            ProviderController.completeAuthentication(updated, eventSession).flashing(Success -> Messages(SignUpDone))
+            Redirect(landingUrl)
+          case _ =>
+            UserService.save(SocialUser(userFromUrl).copy(state = "Active"))
+            Redirect(RoutesHelper.login().url)
+
+        }
+        case _ => Unauthorized("Not Authorized Page")
+      }
+    })
+  }
+  
 }

@@ -54,6 +54,7 @@ object DefaultRegistration extends Controller {
   val UserName = "userName"
   val FirstName = "firstName"
   val LastName = "lastName"
+  val Active = "Active"
   val Password = "password"
   val Password1 = "password1"
   val Password2 = "password2"
@@ -64,7 +65,7 @@ object DefaultRegistration extends Controller {
   val TokenDurationKey = "securesocial.userpass.tokenDuration"
   val DefaultDuration = 60
   val TokenDuration = Play.current.configuration.getInt(TokenDurationKey).getOrElse(DefaultDuration)
-  
+    
   /** The redirect target of the handleStartSignUp action. */
   val onHandleStartSignUpGoTo = stringConfig("securesocial.onStartSignUpGoTo", RoutesHelper.login().url)
   /** The redirect target of the handleSignUp action. */
@@ -144,7 +145,7 @@ object DefaultRegistration extends Controller {
     SecureSocial.withRefererAsOriginalUrl(Ok(use[TemplatesPlugin].getStartSignUpPage(request, startForm)))
   }
 
-  private def createToken(email: String, isSignUp: Boolean): (String, Token) = {
+  private[registration] def createToken(email: String, isSignUp: Boolean): (String, Token) = {
     val uuid = UUID.randomUUID().toString
     val now = DateTime.now
 
@@ -193,7 +194,7 @@ object DefaultRegistration extends Controller {
     })
   }
 
-  private def executeForToken(token: String, isSignUp: Boolean, f: Token => Result): Result = {
+  private[registration] def executeForToken(token: String, isSignUp: Boolean, f: Token => Result): Result = {
     UserService.findToken(token) match {
       case Some(t) if !t.isExpired && t.isSignUp == isSignUp => {
         f(t)
@@ -225,6 +226,7 @@ object DefaultRegistration extends Controller {
             info.firstName,
             info.lastName,
             "%s %s".format(info.firstName, info.lastName),
+            Active,
             Some(t.email),
             GravatarHelper.avatarFor(t.email),
             AuthenticationMethod.UserPassword,
