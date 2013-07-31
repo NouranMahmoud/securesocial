@@ -127,10 +127,7 @@ trait TemplatesPlugin extends Plugin {
    * @param request the current http request
    * @return a String with the text and/or html body for the email
    */
-  //----------------------------------------------
-
   def getSignUpVerificationEmail(token: String)(implicit request: RequestHeader): (Option[Txt], Option[Html])
-//----------------------------------------------
 
   /**
    * Returns the email sent when the user is already registered
@@ -224,11 +221,11 @@ class DefaultTemplatesPlugin(application: Application) extends TemplatesPlugin {
   def getSignUpEmail(token: String)(implicit request: RequestHeader): (Option[Txt], Option[Html]) = {
     (None, Some(securesocial.views.html.mails.signUpEmail(token)))
   }
-//----------------------------------------------
+
   def getSignUpVerificationEmail(token: String)(implicit request: RequestHeader): (Option[Txt], Option[Html])= {
-    (None, Some(securesocial.views.html.mails.signUpEmail(token)))
+    (None, Some(securesocial.views.html.mails.signUpVerificationEmail(token)))
   }
-//----------------------------------------------
+
   def getAlreadyRegisteredEmail(user: Identity)(implicit request: RequestHeader): (Option[Txt], Option[Html]) = {
     (None, Some(securesocial.views.html.mails.alreadyRegisteredEmail(user)))
   }

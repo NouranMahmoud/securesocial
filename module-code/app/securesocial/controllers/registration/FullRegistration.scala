@@ -45,6 +45,7 @@ object FullRegistration extends Controller with securesocial.core.SecureSocial {
   }
 
   val NotActive = "NotActive"
+  val EmailAlreadyTaken = "securesocial.signup.emailAlreadyTaken"
 
   case class FullRegistrationInfo(userName: Option[String], firstName: String, lastName: String, email: String, password: String)
 
@@ -55,7 +56,9 @@ object FullRegistration extends Controller with securesocial.core.SecureSocial {
       }),
       FirstName -> nonEmptyText,
       LastName -> nonEmptyText,
-      Email -> email.verifying(nonEmpty),
+      Email -> email.verifying(nonEmpty).verifying(Messages(EmailAlreadyTaken), email => {
+        UserService.findByEmailAndProvider(email, providerId).isEmpty
+      }),
       (Password ->
         tuple(
           Password1 -> nonEmptyText.verifying(use[PasswordValidator].errorMessage,
@@ -68,7 +71,9 @@ object FullRegistration extends Controller with securesocial.core.SecureSocial {
     mapping(
       FirstName -> nonEmptyText,
       LastName -> nonEmptyText,
-      Email -> email.verifying(nonEmpty),
+      Email -> email.verifying(nonEmpty).verifying(Messages(EmailAlreadyTaken), email => {
+        UserService.findByEmailAndProvider(email, providerId).isEmpty
+      }),
       (Password ->
         tuple(
           Password1 -> nonEmptyText.verifying(use[PasswordValidator].errorMessage,
@@ -100,57 +105,42 @@ object FullRegistration extends Controller with securesocial.core.SecureSocial {
       },
       info => {
         val id = info.email
-        val userId = UserId(id, providerId)
-        // check if there is already an account for this email address
-        UserService.findByEmailAndProvider(info.email, UsernamePasswordProvider.UsernamePassword) match {
-          case Some(user) => {
-            // user signed up already, send an email offering to login/recover password
-            Mailer.sendAlreadyRegisteredEmail(user)
-          }
-          case None => {
-            val token = createToken(info.email, isSignUp = true)
-            Mailer.sendVerificationEmail(info.email, token._1)
-
-            val user = SocialUser(
-              userId,
-              info.firstName,
-              info.lastName,
-              "%s %s".format(info.firstName, info.lastName),
-              NotActive,
-              Some(info.email),
-              GravatarHelper.avatarFor(info.email),
-              AuthenticationMethod.UserPassword,
-              passwordInfo = Some(Registry.hashers.currentHasher.hash(info.password)))
-            val saved = UserService.save(user)
-
-          }
-        }
+        val user = SocialUser(
+          UserId(id, providerId),
+          info.firstName,
+          info.lastName,
+          "%s %s".format(info.firstName, info.lastName),
+          NotActive,
+          Some(info.email),
+          GravatarHelper.avatarFor(info.email),
+          AuthenticationMethod.UserPassword,
+          passwordInfo = Some(Registry.hashers.currentHasher.hash(info.password)))
+        UserService.save(user)
         Redirect(onHandleStartSignUpGoTo).flashing(Success -> Messages(ThankYouCheckEmail), Email -> info.email)
       })
   }
-  //[ ] Create Verification action, it should check the token, if it is correct: set user state = active [@nouranmahmoud]
-  def userVerification(token: String) = UserAwareAction { implicit request =>
 
+  def signUpVerification(token: String) = UserAwareAction { implicit request =>
+    def markAsActive(user: Identity) {
+      val updated = UserService.save(SocialUser(user).copy(state = "Active"))
+      Mailer.sendWelcomeEmail(updated)
+      val eventSession = Events.fire(new SignUpEvent(updated)).getOrElse(session)
+      ProviderController.completeAuthentication(updated, eventSession).flashing(Success -> Messages(SignUpDone))
+    }
     executeForToken(token, true, { t =>
       val email = t.email
       val providerId = t.uuid
-      val userFromUrl = UserService.findByEmailAndProvider(email, UsernamePasswordProvider.UsernamePassword)
-      userFromUrl match {
-        case Some(userFromUrl) => request.user match {
-          case Some(user) if (userFromUrl == user) =>
-            val updated = UserService.save(SocialUser(userFromUrl).copy(state = "Active"))
-            Mailer.sendWelcomeEmail(updated)
-            val eventSession = Events.fire(new SignUpEvent(updated)).getOrElse(session)
-            ProviderController.completeAuthentication(updated, eventSession).flashing(Success -> Messages(SignUpDone))
-            Redirect(landingUrl)
-          case _ =>
-            UserService.save(SocialUser(userFromUrl).copy(state = "Active"))
-            Redirect(RoutesHelper.login().url)
-
-        }
-        case _ => Unauthorized("Not Authorized Page")
+      val userFromToken = UserService.findByEmailAndProvider(email, UsernamePasswordProvider.UsernamePassword)
+      (userFromToken, request.user) match {
+        case (Some(user), Some(user2)) if user.id == user2.id =>
+          markAsActive(user)
+          Redirect(landingUrl)
+        case (Some(user), None) =>
+          markAsActive(user)
+          Redirect(RoutesHelper.login().url)
+        case _ =>
+          Unauthorized("Not Authorized Page")
       }
     })
   }
-  
 }
