@@ -16,6 +16,7 @@ GET     /logout                     securesocial.controllers.LoginPage.logout
 # User Registration and password handling (only needed if you are using UsernamePasswordProvider)
 GET     /signup                     securesocial.controllers.registration.FullRegistration.signUp
 POST    /signup                     securesocial.controllers.registration.FullRegistration.handleSignUp
+GET     /signup/:token                  securesocial.controllers.registration.FullRegistration.signUpVerification(token)
 GET     /old/signup                     securesocial.controllers.Registration.startSignUp
 POST    /old/signup                     securesocial.controllers.Registration.handleStartSignUp
 GET     /old/signup/:token              securesocial.controllers.Registration.signUp(token)

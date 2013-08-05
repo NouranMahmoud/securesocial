@@ -63,7 +63,7 @@ trait TemplatesPlugin extends Plugin {
    * @tparam A
    * @return
    */
-  def getFullSignUpPage[A](implicit request: Request[A], form: Form[FullRegistrationInfo]): Html = ???
+  def getFullSignUpPage[A](implicit request: Request[A], form: Form[FullRegistrationInfo]): Html
 
   /**
    * Returns the html for the start signup page

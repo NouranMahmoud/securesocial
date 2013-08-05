@@ -6,6 +6,7 @@
 @import securesocial.core.AuthenticationMethod._
 @import securesocial.core.providers.utils.RoutesHelper
 @import play.api.Logger
+@import play.api.Play
 @import helper._
 @implicitFieldConstructor = @{ FieldConstructor(securesocial.views.html.inputFieldConstructor.f) }
 
@@ -48,7 +49,13 @@
                             <a href="@securesocial.core.providers.utils.RoutesHelper.startResetPassword()"><p>@Messages("securesocial.login.forgotPassword") </a></p>
                         </div>
                             <div class="clearfix">
-                                <p>@Messages("securesocial.login.signUp") <a href="@securesocial.core.providers.utils.RoutesHelper.startSignUp()">@Messages("securesocial.login.here")</a></p>
+                                <p>@Messages("securesocial.login.signUp") 
+                                @if(Play.current.configuration.getString("securesocial.userpass.registrationForm").getOrElse("default") == "full"){
+                                   <a href="@securesocial.core.providers.utils.RoutesHelper.fullSignUp()">@Messages("securesocial.login.here")</a>
+                               } else { 
+                                 <a href="@securesocial.core.providers.utils.RoutesHelper.startSignUp()">@Messages("securesocial.login.here")</a> 
+                               }
+                                </p>
                             </div>
                     </fieldset>
                 </form>

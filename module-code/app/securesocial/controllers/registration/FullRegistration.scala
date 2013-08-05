@@ -116,6 +116,8 @@ object FullRegistration extends Controller with securesocial.core.SecureSocial {
           AuthenticationMethod.UserPassword,
           passwordInfo = Some(Registry.hashers.currentHasher.hash(info.password)))
         UserService.save(user)
+        val token = createToken(info.email, isSignUp = true)
+        Mailer.sendVerificationEmail(info.email, token._1)
         Redirect(onHandleStartSignUpGoTo).flashing(Success -> Messages(ThankYouCheckEmail), Email -> info.email)
       })
   }
