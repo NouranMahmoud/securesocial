@@ -24,7 +24,7 @@ import play.api.libs.json.Json
 import scala.Some
 import play.api.libs.oauth.ServiceInfo
 import play.api.http.HeaderNames
-
+import play.api.Play
 
 /**
  * A request that adds the User for the current call
@@ -101,10 +101,18 @@ trait SecureSocial extends Controller {
         val response = if ( ajaxCall ) {
           ajaxCallNotAuthenticated(request)
         } else {
+        	if(Play.current.configuration.getString("securesocial.userpass.registrationForm").getOrElse("default") == "full"){
           Redirect(RoutesHelper.login().absoluteURL(IdentityProvider.sslEnabled))
+            .flashing("error" -> Messages("securesocial.verificationRequired"))
+            .withSession(session + (SecureSocial.OriginalUrlKey -> request.uri)
+          )
+        	}
+        	else{
+        	  Redirect(RoutesHelper.login().absoluteURL(IdentityProvider.sslEnabled))
             .flashing("error" -> Messages("securesocial.loginRequired"))
             .withSession(session + (SecureSocial.OriginalUrlKey -> request.uri)
           )
+        	}
         }
         response.discardingCookies(Authenticator.discardingCookie)
       })

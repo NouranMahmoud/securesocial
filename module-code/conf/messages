@@ -53,7 +53,8 @@ securesocial.notAuthorized.title=Not Authorized
 securesocial.notAuthorized.message=You are not authorized to access that page
 
 #
-securesocial.loginRequired=You need to be verified to access that page.
+securesocial.loginRequired=You need to log in to access that page.
+securesocial.verificationRequired=You need to verify your email to access that page.
 
 # Mails
 #
